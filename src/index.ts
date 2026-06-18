@@ -117,7 +117,7 @@ async function runHTTP(): Promise<void> {
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-const transport = process.env.TRANSPORT ?? "stdio";
+const transport = process.env.TRANSPORT ?? "http";
 
 if (transport === "http") {
   runHTTP().catch((err: unknown) => {
