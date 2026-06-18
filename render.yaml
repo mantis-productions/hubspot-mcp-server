@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: hubspot-mcp-server
+    runtime: docker
+    plan: free          # upgrade to starter ($7/mo) to avoid spin-down
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+
+    envVars:
+      - key: TRANSPORT
+        value: http
+
+      # Set these in the Render dashboard under Environment → Secret Files
+      # DO NOT commit real values here
+      - key: HUBSPOT_ACCESS_TOKEN
+        sync: false     # Render will prompt you to enter this manually
+
+      - key: MCP_API_KEY
+        sync: false     # Your chosen secret token for Claude.ai to authenticate with
