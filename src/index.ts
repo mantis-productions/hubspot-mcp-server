@@ -1,5 +1,4 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
@@ -46,7 +45,6 @@ function buildServer(): McpServer {
 function requireBearerToken(req: Request, res: Response, next: NextFunction): void {
   const apiKey = process.env.MCP_API_KEY;
   if (!apiKey) {
-    // No key configured — pass through (dev mode only)
     next();
     return;
   }
@@ -72,61 +70,29 @@ function requireBearerToken(req: Request, res: Response, next: NextFunction): vo
   next();
 }
 
-// ── Transport: stdio ──────────────────────────────────────────────────────────
+// ── HTTP server (always — stdio removed) ─────────────────────────────────────
 
-async function runStdio(): Promise<void> {
+const app = express();
+app.use(express.json());
+
+app.get("/health", (_req: Request, res: Response) => {
+  res.json({ status: "ok", server: "hubspot-mcp-server", version: "1.0.0" });
+});
+
+app.post("/mcp", requireBearerToken, async (req: Request, res: Response) => {
   const server = buildServer();
-  const transport = new StdioServerTransport();
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+    enableJsonResponse: true,
+  });
+  res.on("close", () => transport.close());
   await server.connect(transport);
-  console.error("HubSpot MCP server running via stdio");
-}
+  await transport.handleRequest(req, res, req.body);
+});
 
-// ── Transport: HTTP ───────────────────────────────────────────────────────────
-
-async function runHTTP(): Promise<void> {
-  const app = express();
-  app.use(express.json());
-
-  // Public health check — no auth required
-  app.get("/health", (_req: Request, res: Response) => {
-    res.json({ status: "ok", server: "hubspot-mcp-server", version: "1.0.0" });
-  });
-
-  // All MCP requests require a valid bearer token
-  app.post("/mcp", requireBearerToken, async (req: Request, res: Response) => {
-    const server = buildServer();
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-      enableJsonResponse: true,
-    });
-    res.on("close", () => transport.close());
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
-  });
-
-  const port = parseInt(process.env.PORT ?? "3000", 10);
-  app.listen(port, () => {
-    console.error(`HubSpot MCP server running on http://localhost:${port}/mcp`);
-    if (process.env.MCP_API_KEY) {
-      console.error("Bearer token auth: ENABLED");
-    } else {
-      console.error("WARNING: MCP_API_KEY not set — server is open, set this in production");
-    }
-  });
-}
-
-// ── Entry point ───────────────────────────────────────────────────────────────
-
-const transport = process.env.TRANSPORT ?? "http";
-
-if (transport === "http") {
-  runHTTP().catch((err: unknown) => {
-    console.error("Server error:", err);
-    process.exit(1);
-  });
-} else {
-  runStdio().catch((err: unknown) => {
-    console.error("Server error:", err);
-    process.exit(1);
-  });
-}
+const port = parseInt(process.env.PORT ?? "3000", 10);
+app.listen(port, () => {
+  console.log(`HubSpot MCP server running on port ${port}`);
+  console.log(`MCP endpoint: http://localhost:${port}/mcp`);
+  console.log(`Auth: ${process.env.MCP_API_KEY ? "ENABLED" : "WARNING: MCP_API_KEY not set"}`);
+});
