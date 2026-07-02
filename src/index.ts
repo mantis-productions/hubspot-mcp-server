@@ -1,3 +1,4 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
@@ -8,6 +9,7 @@ import { registerContactTools } from "./tools/contacts.js";
 import { registerCompanyTools } from "./tools/companies.js";
 import { registerDealTools } from "./tools/deals.js";
 import { registerSearchTools } from "./tools/search.js";
+import { runAgent } from "./agents/hubspot-agent.js";
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
@@ -21,6 +23,14 @@ function getHubSpotToken(): string {
     );
   }
   return token;
+}
+
+function getAnthropicClient(): Anthropic {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error("ANTHROPIC_API_KEY environment variable is required for agent endpoints.");
+  }
+  return new Anthropic({ apiKey });
 }
 
 function buildServer(): McpServer {
@@ -88,6 +98,27 @@ app.post("/mcp", requireBearerToken, async (req: Request, res: Response) => {
   res.on("close", () => transport.close());
   await server.connect(transport);
   await transport.handleRequest(req, res, req.body);
+});
+
+// ── Agent endpoint ────────────────────────────────────────────────────────────
+
+app.post("/agent", requireBearerToken, async (req: Request, res: Response) => {
+  const { prompt, max_turns } = req.body as { prompt?: string; max_turns?: number };
+
+  if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+    res.status(400).json({ error: "Bad Request", message: "prompt (string) is required" });
+    return;
+  }
+
+  try {
+    const anthropic = getAnthropicClient();
+    const hubspotClient = createHubSpotClient(getHubSpotToken());
+    const result = await runAgent(anthropic, hubspotClient, prompt.trim(), max_turns);
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Agent error", message });
+  }
 });
 
 const port = parseInt(process.env.PORT ?? "3000", 10);
