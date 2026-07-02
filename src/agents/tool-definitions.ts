@@ -21,7 +21,7 @@ export const HUBSPOT_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "hubspot_list_contacts",
-    description: "List HubSpot contacts with pagination.",
+    description: "List HubSpot contacts with pagination. Order is NOT guaranteed to be by recency (typically ascending by internal record ID / creation order, oldest first). For \"most recent\" or \"latest\" requests, use hubspot_search with sortBy=\"createdate\" and sortDirection=\"DESCENDING\" instead.",
     input_schema: {
       type: "object",
       properties: {
@@ -114,7 +114,7 @@ export const HUBSPOT_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "hubspot_list_companies",
-    description: "List HubSpot companies with pagination.",
+    description: "List HubSpot companies with pagination. Order is NOT guaranteed to be by recency (typically ascending by internal record ID / creation order, oldest first). For \"most recent\" or \"latest\" requests, use hubspot_search with sortBy=\"createdate\" and sortDirection=\"DESCENDING\" instead.",
     input_schema: {
       type: "object",
       properties: {
@@ -210,7 +210,7 @@ export const HUBSPOT_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "hubspot_list_deals",
-    description: "List HubSpot deals with pagination.",
+    description: "List HubSpot deals with pagination. Order is NOT guaranteed to be by recency (typically ascending by internal record ID / creation order, oldest first). For \"most recent\" or \"latest\" requests, use hubspot_search with sortBy=\"createdate\" and sortDirection=\"DESCENDING\" instead.",
     input_schema: {
       type: "object",
       properties: {
