@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HubSpot Agent</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2e38;
+    --text: #e6e8ec;
+    --muted: #9aa0ab;
+    --accent: #ff7a59; /* HubSpot orange */
+    --accent-dim: #7a3d2c;
+    --user-bubble: #23283a;
+    --agent-bubble: #171a21;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  header h1 .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  #settingsBtn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  #settingsBtn:hover { color: var(--text); border-color: var(--muted); }
+
+  #settingsPanel {
+    display: none;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    gap: 10px;
+    flex-direction: column;
+  }
+  #settingsPanel.open { display: flex; }
+  #settingsPanel label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  #settingsPanel input {
+    width: 100%;
+    padding: 8px 10px;
+    background: #0f1115;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  #settingsPanel .row { display: flex; gap: 10px; align-items: flex-end; }
+  #settingsPanel button {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    background: var(--accent);
+    color: #1a1a1a;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .empty {
+    margin: auto;
+    text-align: center;
+    color: var(--muted);
+    max-width: 420px;
+  }
+  .empty h2 { font-size: 16px; color: var(--text); margin-bottom: 8px; }
+  .empty p { font-size: 13px; line-height: 1.6; }
+
+  .turn { display: flex; flex-direction: column; gap: 8px; max-width: 760px; width: 100%; margin: 0 auto; }
+  .msg {
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+  }
+  .msg.user {
+    background: var(--user-bubble);
+    align-self: flex-end;
+    max-width: 80%;
+  }
+  .msg.agent {
+    background: var(--agent-bubble);
+    border: 1px solid var(--border);
+  }
+  .msg.error {
+    background: #2a1417;
+    border: 1px solid #5c2a2f;
+    color: #ffb4bb;
+  }
+  .meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px;
+  }
+  details.actions {
+    margin-top: 8px;
+    font-size: 12px;
+  }
+  details.actions summary {
+    cursor: pointer;
+    color: var(--muted);
+  }
+  details.actions summary:hover { color: var(--text); }
+  .action-item {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .action-item .tool {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .action-item pre {
+    margin: 6px 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 11px;
+    color: var(--muted);
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .typing {
+    display: flex;
+    gap: 4px;
+    padding: 4px 0;
+  }
+  .typing span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--muted);
+    animation: blink 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 14px 20px;
+    flex-shrink: 0;
+  }
+  #composer {
+    max-width: 760px;
+    margin: 0 auto;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  #promptInput {
+    flex: 1;
+    resize: none;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    padding: 12px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.4;
+    max-height: 160px;
+  }
+  #promptInput:focus { outline: none; border-color: var(--accent); }
+  #sendBtn {
+    background: var(--accent);
+    color: #1a1a1a;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #sendBtn:disabled { background: var(--accent-dim); cursor: not-allowed; color: #d8b3a8; }
+  .hint { font-size: 11px; color: var(--muted); max-width: 760px; margin: 6px auto 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="dot"></span> HubSpot Agent</h1>
+  <button id="settingsBtn">Settings</button>
+</header>
+
+<div id="settingsPanel">
+  <div>
+    <label for="apiKeyInput">API Key (Authorization: Bearer &lt;token&gt;) — leave blank if server auth is disabled</label>
+    <input id="apiKeyInput" type="password" placeholder="mcp api key" autocomplete="off" />
+  </div>
+  <div class="row">
+    <div style="flex:1">
+      <label for="endpointInput">Agent endpoint</label>
+      <input id="endpointInput" type="text" value="/agent" autocomplete="off" />
+    </div>
+    <button id="saveSettingsBtn">Save</button>
+  </div>
+</div>
+
+<main id="chat">
+  <div class="empty" id="emptyState">
+    <h2>Ask the HubSpot agent anything</h2>
+    <p>e.g. "Find the contact john@acme.com and move them to customer lifecycle stage", or "List the 5 most recently created deals over $10,000".</p>
+  </div>
+</main>
+
+<footer>
+  <div id="composer">
+    <textarea id="promptInput" rows="1" placeholder="Type a command…"></textarea>
+    <button id="sendBtn">Run</button>
+  </div>
+  <div class="hint">Enter to send · Shift+Enter for newline</div>
+</footer>
+
+<script>
+  const chat = document.getElementById('chat');
+  const emptyState = document.getElementById('emptyState');
+  const promptInput = document.getElementById('promptInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsPanel = document.getElementById('settingsPanel');
+  const apiKeyInput = document.getElementById('apiKeyInput');
+  const endpointInput = document.getElementById('endpointInput');
+  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+
+  apiKeyInput.value = localStorage.getItem('hubspotAgentApiKey') || '';
+  endpointInput.value = localStorage.getItem('hubspotAgentEndpoint') || '/agent';
+
+  settingsBtn.addEventListener('click', () => settingsPanel.classList.toggle('open'));
+  saveSettingsBtn.addEventListener('click', () => {
+    localStorage.setItem('hubspotAgentApiKey', apiKeyInput.value.trim());
+    localStorage.setItem('hubspotAgentEndpoint', endpointInput.value.trim() || '/agent');
+    settingsPanel.classList.remove('open');
+  });
+
+  promptInput.addEventListener('input', () => {
+    promptInput.style.height = 'auto';
+    promptInput.style.height = Math.min(promptInput.scrollHeight, 160) + 'px';
+  });
+  promptInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+  sendBtn.addEventListener('click', send);
+
+  function addUserMessage(text) {
+    emptyState.remove();
+    const turn = document.createElement('div');
+    turn.className = 'turn';
+    turn.innerHTML = '<div class="msg user"></div>';
+    turn.querySelector('.msg').textContent = text;
+    chat.appendChild(turn);
+    chat.scrollTop = chat.scrollHeight;
+    return turn;
+  }
+
+  function addTypingIndicator(turn) {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg agent';
+    wrap.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+    turn.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+    return wrap;
+  }
+
+  function renderActions(actions) {
+    if (!actions || actions.length === 0) return '';
+    const items = actions.map(a => {
+      const input = JSON.stringify(a.input, null, 2);
+      const result = JSON.stringify(a.result, null, 2);
+      return '<div class="action-item">' +
+        '<div class="tool">' + escapeHtml(a.tool) + '</div>' +
+        '<pre>input: ' + escapeHtml(input) + '\n\nresult: ' + escapeHtml(result) + '</pre>' +
+        '</div>';
+    }).join('');
+    return '<details class="actions"><summary>' + actions.length + ' tool call' + (actions.length > 1 ? 's' : '') + '</summary>' + items + '</details>';
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  async function send() {
+    const text = promptInput.value.trim();
+    if (!text) return;
+
+    promptInput.value = '';
+    promptInput.style.height = 'auto';
+    sendBtn.disabled = true;
+
+    const turn = addUserMessage(text);
+    const typingEl = addTypingIndicator(turn);
+
+    const endpoint = localStorage.getItem('hubspotAgentEndpoint') || '/agent';
+    const apiKey = localStorage.getItem('hubspotAgentApiKey') || '';
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ prompt: text }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      typingEl.remove();
+
+      if (!res.ok) {
+        const msgEl = document.createElement('div');
+        msgEl.className = 'msg error';
+        msgEl.textContent = (data && (data.message || data.error)) || ('Request failed with status ' + res.status);
+        turn.appendChild(msgEl);
+      } else {
+        const msgEl = document.createElement('div');
+        msgEl.className = 'msg agent';
+        msgEl.textContent = data.answer || '(no answer returned)';
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.innerHTML = '<span class="badge">' + (data.turns ?? '?') + ' turn' + ((data.turns === 1) ? '' : 's') + '</span>' + renderActions(data.actions);
+        msgEl.appendChild(meta);
+        turn.appendChild(msgEl);
+      }
+    } catch (err) {
+      typingEl.remove();
+      const msgEl = document.createElement('div');
+      msgEl.className = 'msg error';
+      msgEl.textContent = 'Network error: ' + err.message;
+      turn.appendChild(msgEl);
+    } finally {
+      sendBtn.disabled = false;
+      chat.scrollTop = chat.scrollHeight;
+    }
+  }
+</script>
+
+</body>
+</html>
