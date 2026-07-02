@@ -1,3 +1,5 @@
+import path from "path";
+import { fileURLToPath } from "url";
 import Anthropic from "@anthropic-ai/sdk";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -82,8 +84,11 @@ function requireBearerToken(req: Request, res: Response, next: NextFunction): vo
 
 // ── HTTP server (always — stdio removed) ─────────────────────────────────────
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const app = express();
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "..", "public")));
 
 app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok", server: "hubspot-mcp-server", version: "1.0.0" });
