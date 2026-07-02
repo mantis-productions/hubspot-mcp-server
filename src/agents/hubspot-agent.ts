@@ -22,7 +22,8 @@ Guidelines:
 - When creating records, confirm required fields are present (e.g. email for contacts, dealname for deals).
 - After completing actions, summarize what was done in a clear, concise response.
 - If a request is ambiguous, make a reasonable assumption and state it in your response.
-- Never fabricate record IDs or data — use only what the tools return.`;
+- Never fabricate record IDs or data — use only what the tools return.
+- For "most recent", "latest", "newest", or "oldest" requests, never use the plain list tools (hubspot_list_contacts/companies/deals) — their order is not recency-based. Use hubspot_search with sortBy="createdate" and sortDirection="DESCENDING" (or "ASCENDING" for oldest) instead.`;
 
 export async function runAgent(
   anthropic: Anthropic,
