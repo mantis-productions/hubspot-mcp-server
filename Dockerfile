@@ -20,6 +20,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
+COPY public/ ./public/
 
 # Force HTTP transport — this server is deployed as a remote MCP endpoint
 ENV TRANSPORT=http
