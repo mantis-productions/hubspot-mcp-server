@@ -94,7 +94,7 @@ export const HUBSPOT_TOOLS: Anthropic.Tool[] = [
     },
   },
 
-  // ── Companies ─────────────────────────────────────────────────────────────
+  // ── Companies ────────────────────────────────────────────────────────────────
 
   {
     name: "hubspot_get_company",
@@ -340,6 +340,159 @@ Operators: EQ, NEQ, CONTAINS_TOKEN, NOT_CONTAINS_TOKEN, GT, GTE, LT, LTE, HAS_PR
         toObjectType: { type: "string", enum: ["contacts", "companies", "deals"] },
       },
       required: ["fromObjectType", "fromObjectId", "toObjectType"],
+    },
+  },
+
+  // ── Pipelines & Stages ─────────────────────────────────────────────────
+
+  {
+    name: "hubspot_list_pipelines",
+    description: "List all pipelines and their stages for an object type (e.g. deals, tickets). Each stage includes its id, label, displayOrder, and metadata (probability for deals).",
+    input_schema: {
+      type: "object",
+      properties: {
+        objectType: { type: "string", enum: ["deals", "tickets"], description: "Object type (default: deals)" },
+      },
+    },
+  },
+  {
+    name: "hubspot_create_pipeline",
+    description: `Create a new pipeline with its stages in one call.
+
+For objectType "deals", each stage needs a "probability" (0.0-1.0, likelihood of closing at that stage; use 1.0 for a closed-won-style stage, 0.0 for closed-lost-style).
+For objectType "tickets", each stage needs a "state" of "OPEN" or "CLOSED" instead.
+
+Returns the created pipeline with real stage IDs — use those IDs (not labels) in all other pipeline/stage/deal tools.`,
+    input_schema: {
+      type: "object",
+      properties: {
+        objectType: { type: "string", enum: ["deals", "tickets"], description: "Object type (default: deals)" },
+        label: { type: "string", description: "Pipeline display name" },
+        stages: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              displayOrder: { type: "number", description: "0-indexed order within the pipeline" },
+              probability: { type: "number", description: "0.0-1.0 (deals pipelines only)" },
+              state: { type: "string", enum: ["OPEN", "CLOSED"], description: "(tickets pipelines only)" },
+            },
+            required: ["label", "displayOrder"],
+          },
+          description: "Ordered list of stages to create with the pipeline",
+        },
+      },
+      required: ["label", "stages"],
+    },
+  },
+  {
+    name: "hubspot_update_pipeline",
+    description: "Update a pipeline's label or display order.",
+    input_schema: {
+      type: "object",
+      properties: {
+        objectType: { type: "string", enum: ["deals", "tickets"], description: "Object type (default: deals)" },
+        pipelineId: { type: "string" },
+        label: { type: "string" },
+        displayOrder: { type: "number" },
+      },
+      required: ["pipelineId"],
+    },
+  },
+  {
+    name: "hubspot_create_pipeline_stage",
+    description: "Add a new stage to an existing pipeline.",
+    input_schema: {
+      type: "object",
+      properties: {
+        objectType: { type: "string", enum: ["deals", "tickets"], description: "Object type (default: deals)" },
+        pipelineId: { type: "string" },
+        label: { type: "string" },
+        displayOrder: { type: "number", description: "0-indexed order within the pipeline" },
+        probability: { type: "number", description: "0.0-1.0 (deals pipelines only)" },
+        state: { type: "string", enum: ["OPEN", "CLOSED"], description: "(tickets pipelines only)" },
+      },
+      required: ["pipelineId", "label", "displayOrder"],
+    },
+  },
+  {
+    name: "hubspot_update_pipeline_stage",
+    description: "Update an existing pipeline stage's label, order, or probability/state.",
+    input_schema: {
+      type: "object",
+      properties: {
+        objectType: { type: "string", enum: ["deals", "tickets"], description: "Object type (default: deals)" },
+        pipelineId: { type: "string" },
+        stageId: { type: "string" },
+        label: { type: "string" },
+        displayOrder: { type: "number" },
+        probability: { type: "number" },
+        state: { type: "string", enum: ["OPEN", "CLOSED"] },
+      },
+      required: ["pipelineId", "stageId"],
+    },
+  },
+  {
+    name: "hubspot_delete_pipeline_stage",
+    description: "Delete a pipeline stage. Fails if any deal currently sits in that stage — move or close those deals first.",
+    input_schema: {
+      type: "object",
+      properties: {
+        objectType: { type: "string", enum: ["deals", "tickets"], description: "Object type (default: deals)" },
+        pipelineId: { type: "string" },
+        stageId: { type: "string" },
+      },
+      required: ["pipelineId", "stageId"],
+    },
+  },
+
+  // ── Stage-required-properties (agent-enforced, not a native HubSpot API) ──
+
+  {
+    name: "hubspot_set_stage_required_properties",
+    description: `Define which deal properties must be set before a deal can enter a given pipeline stage.
+
+IMPORTANT: HubSpot's API has no native concept of stage-required-properties (verified against live docs — stage metadata only carries probability). This is an agent-side rule, enforced only by this agent when it moves a deal via hubspot_move_deal_to_stage — it does NOT appear in the HubSpot UI and does NOT block manual stage changes made by users in HubSpot directly. Rules also reset if this server restarts/redeploys unless promoted into the server's source code.`,
+    input_schema: {
+      type: "object",
+      properties: {
+        pipelineId: { type: "string" },
+        stageId: { type: "string" },
+        requiredProperties: {
+          type: "array",
+          items: { type: "string" },
+          description: "HubSpot deal property internal names that must be non-empty (e.g. amount, closedate)",
+        },
+      },
+      required: ["pipelineId", "stageId", "requiredProperties"],
+    },
+  },
+  {
+    name: "hubspot_get_stage_required_properties",
+    description: "Get the agent-enforced required properties configured for a pipeline stage. Omit stageId to list all configured rules for the pipeline.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pipelineId: { type: "string" },
+        stageId: { type: "string" },
+      },
+      required: ["pipelineId"],
+    },
+  },
+  {
+    name: "hubspot_move_deal_to_stage",
+    description: `Move a deal into a pipeline stage, enforcing any agent-side required-properties rule configured for that stage (see hubspot_set_stage_required_properties).
+
+If required properties are missing, the deal is NOT updated and the response lists exactly which properties are missing — set them first with hubspot_update_deal, then retry.`,
+    input_schema: {
+      type: "object",
+      properties: {
+        dealId: { type: "string" },
+        pipelineId: { type: "string", description: "Pipeline the deal belongs to (needed to look up the stage's required-properties rule)" },
+        stageId: { type: "string", description: "Target stage ID (this becomes the deal's dealstage)" },
+      },
+      required: ["dealId", "pipelineId", "stageId"],
     },
   },
 ];
