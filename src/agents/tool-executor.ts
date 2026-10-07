@@ -67,6 +67,33 @@ function getAssociationTypeId(from: string, to: string): number {
   return id;
 }
 
+interface HubSpotOwner {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  userId?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  archived?: boolean;
+  teams?: Array<{ id: string; name: string }>;
+}
+
+function formatOwner(o: HubSpotOwner) {
+  return {
+    ownerId: o.id,
+    email: o.email,
+    firstName: o.firstName,
+    lastName: o.lastName,
+    fullName: [o.firstName, o.lastName].filter(Boolean).join(" "),
+    userId: o.userId,
+    active: !o.archived,
+    teams: o.teams?.map((t) => t.name) ?? [],
+    createdAt: o.createdAt,
+    updatedAt: o.updatedAt,
+  };
+}
+
 export async function executeTool(
   client: AxiosInstance,
   toolName: string,
@@ -367,6 +394,28 @@ export async function executeTool(
         newStage: input.stageId,
         deal: formatDeal(res.data),
       };
+    }
+
+    // ── Account & Owners ─────────────────────────────────────────────────
+
+    case "hubspot_get_account_info": {
+      const res = await client.get("/account-info/v3/details");
+      return res.data;
+    }
+
+    case "hubspot_list_owners": {
+      const params: Record<string, unknown> = { limit: input.limit ?? 100 };
+      if (input.email) params.email = input.email;
+      if (input.after) params.after = input.after;
+      const res = await client.get<HubSpotListResponse<HubSpotOwner>>("/crm/v3/owners", { params });
+      const owners = res.data.results.map(formatOwner);
+      const nextCursor = res.data.paging?.next?.after;
+      return { owners, hasMore: !!nextCursor, nextCursor, total: owners.length };
+    }
+
+    case "hubspot_get_owner": {
+      const res = await client.get<HubSpotOwner>(`/crm/v3/owners/${input.ownerId}`);
+      return formatOwner(res.data);
     }
 
     default:
