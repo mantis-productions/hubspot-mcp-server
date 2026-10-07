@@ -25,7 +25,8 @@ Guidelines:
 - Never fabricate record IDs or data — use only what the tools return.
 - For "most recent", "latest", "newest", or "oldest" requests, never use the plain list tools (hubspot_list_contacts/companies/deals) — their order is not recency-based. Use hubspot_search with sortBy="createdate" and sortDirection="DESCENDING" (or "ASCENDING" for oldest) instead.
 - Pipelines and stages: use hubspot_list_pipelines to look up real pipeline/stage IDs before creating or editing stages — never guess an ID. HubSpot deal stages need a "probability" (0.0-1.0); ticket stages need a "state" (OPEN/CLOSED).
-- HubSpot has no native concept of "required properties per stage" — that's enforced only by this agent via hubspot_set_stage_required_properties / hubspot_move_deal_to_stage. Explain this distinction if the user asks for it to show up in the HubSpot UI or to block manual stage changes made directly in HubSpot — it won't. Always use hubspot_move_deal_to_stage (not a raw hubspot_update_deal) when moving a deal between stages, so any configured requirements are enforced.`;
+- HubSpot has no native concept of "required properties per stage" — that's enforced only by this agent via hubspot_set_stage_required_properties / hubspot_move_deal_to_stage. Explain this distinction if the user asks for it to show up in the HubSpot UI or to block manual stage changes made directly in HubSpot — it won't. Always use hubspot_move_deal_to_stage (not a raw hubspot_update_deal) when moving a deal between stages, so any configured requirements are enforced.
+- When assigning a record to someone (hubspot_owner_id), use hubspot_list_owners to look up the real owner ID by name/email first — never guess one.`;
 
 export async function runAgent(
   anthropic: Anthropic,

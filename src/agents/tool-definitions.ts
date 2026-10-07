@@ -343,7 +343,7 @@ Operators: EQ, NEQ, CONTAINS_TOKEN, NOT_CONTAINS_TOKEN, GT, GTE, LT, LTE, HAS_PR
     },
   },
 
-  // ── Pipelines & Stages ─────────────────────────────────────────────────
+  // ── Pipelines & Stages ──────────────────────────────────────────────
 
   {
     name: "hubspot_list_pipelines",
@@ -493,6 +493,40 @@ If required properties are missing, the deal is NOT updated and the response lis
         stageId: { type: "string", description: "Target stage ID (this becomes the deal's dealstage)" },
       },
       required: ["dealId", "pipelineId", "stageId"],
+    },
+  },
+
+  // ── Account & Owners ─────────────────────────────────────────────────────
+
+  {
+    name: "hubspot_get_account_info",
+    description: "Get this HubSpot portal's account-level details: time zone, currency, account type, portal name, account ID, and creation date.",
+    input_schema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "hubspot_list_owners",
+    description: "List HubSpot owners (CRM-assignable reps used for hubspot_owner_id on contacts/companies/deals). Optionally filter by email. Use this to look up a real owner ID before assigning a record to someone — never guess an owner ID.",
+    input_schema: {
+      type: "object",
+      properties: {
+        email: { type: "string", description: "Filter to the owner with this exact email address" },
+        limit: { type: "number", description: "Results per page (1-500, default 100)" },
+        after: { type: "string", description: "Pagination cursor" },
+      },
+    },
+  },
+  {
+    name: "hubspot_get_owner",
+    description: "Get a single HubSpot owner by owner ID.",
+    input_schema: {
+      type: "object",
+      properties: {
+        ownerId: { type: "string", description: "HubSpot owner ID" },
+      },
+      required: ["ownerId"],
     },
   },
 ];
