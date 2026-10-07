@@ -1,6 +1,11 @@
 import type { AxiosInstance } from "axios";
 import { ASSOCIATION_TYPES, DEFAULT_CONTACT_PROPERTIES, DEFAULT_COMPANY_PROPERTIES, DEFAULT_DEAL_PROPERTIES } from "../constants.js";
 import { prop } from "../services/hubspot-client.js";
+import {
+  setStageRequirements,
+  getStageRequirements,
+  getAllStageRequirements,
+} from "./stage-requirements-store.js";
 import type { HubSpotRecord, HubSpotListResponse, HubSpotSearchResponse, HubSpotAssociationResult } from "../types.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -241,6 +246,127 @@ export async function executeTool(
         `/crm/v3/objects/${input.fromObjectType}/${input.fromObjectId}/associations/${input.toObjectType}`
       );
       return { total: res.data.results.length, associations: res.data.results };
+    }
+
+    // ── Pipelines & Stages ──────────────────────────────────────────────────
+
+    case "hubspot_list_pipelines": {
+      const objectType = input.objectType ?? "deals";
+      const res = await client.get(`/crm/v3/pipelines/${objectType}`);
+      return res.data;
+    }
+
+    case "hubspot_create_pipeline": {
+      const objectType = input.objectType ?? "deals";
+      const stages = (input.stages as Array<Record<string, unknown>>).map((s) => ({
+        label: s.label,
+        displayOrder: s.displayOrder,
+        metadata: objectType === "deals"
+          ? { probability: String(s.probability ?? 0) }
+          : { state: s.state ?? "OPEN" },
+      }));
+      const res = await client.post(`/crm/v3/pipelines/${objectType}`, {
+        label: input.label,
+        displayOrder: 0,
+        stages,
+      });
+      return res.data;
+    }
+
+    case "hubspot_update_pipeline": {
+      const objectType = input.objectType ?? "deals";
+      const body: Record<string, unknown> = {};
+      if (input.label !== undefined) body.label = input.label;
+      if (input.displayOrder !== undefined) body.displayOrder = input.displayOrder;
+      const res = await client.patch(`/crm/v3/pipelines/${objectType}/${input.pipelineId}`, body);
+      return res.data;
+    }
+
+    case "hubspot_create_pipeline_stage": {
+      const objectType = input.objectType ?? "deals";
+      const metadata = objectType === "deals"
+        ? { probability: String(input.probability ?? 0) }
+        : { state: input.state ?? "OPEN" };
+      const res = await client.post(`/crm/v3/pipelines/${objectType}/${input.pipelineId}/stages`, {
+        label: input.label,
+        displayOrder: input.displayOrder,
+        metadata,
+      });
+      return res.data;
+    }
+
+    case "hubspot_update_pipeline_stage": {
+      const objectType = input.objectType ?? "deals";
+      const body: Record<string, unknown> = {};
+      if (input.label !== undefined) body.label = input.label;
+      if (input.displayOrder !== undefined) body.displayOrder = input.displayOrder;
+      if (input.probability !== undefined || input.state !== undefined) {
+        body.metadata = objectType === "deals"
+          ? { probability: String(input.probability) }
+          : { state: input.state };
+      }
+      const res = await client.patch(
+        `/crm/v3/pipelines/${objectType}/${input.pipelineId}/stages/${input.stageId}`,
+        body
+      );
+      return res.data;
+    }
+
+    case "hubspot_delete_pipeline_stage": {
+      const objectType = input.objectType ?? "deals";
+      await client.delete(`/crm/v3/pipelines/${objectType}/${input.pipelineId}/stages/${input.stageId}`);
+      return { success: true, message: `Stage ${input.stageId} deleted from pipeline ${input.pipelineId}.` };
+    }
+
+    // ── Stage-required-properties (agent-enforced) ─────────────────────────
+
+    case "hubspot_set_stage_required_properties": {
+      setStageRequirements(input.pipelineId, input.stageId, input.requiredProperties ?? []);
+      return {
+        success: true,
+        pipelineId: input.pipelineId,
+        stageId: input.stageId,
+        requiredProperties: input.requiredProperties ?? [],
+        note: "Enforced by this agent only (not a native HubSpot rule); resets on server restart unless promoted into source code.",
+      };
+    }
+
+    case "hubspot_get_stage_required_properties": {
+      if (input.stageId) {
+        return { pipelineId: input.pipelineId, stageId: input.stageId, requiredProperties: getStageRequirements(input.pipelineId, input.stageId) };
+      }
+      const all = getAllStageRequirements();
+      return { pipelineId: input.pipelineId, rules: all[input.pipelineId] ?? {} };
+    }
+
+    case "hubspot_move_deal_to_stage": {
+      const required = getStageRequirements(input.pipelineId, input.stageId);
+
+      if (required.length > 0) {
+        const current = await client.get<HubSpotRecord>(`/crm/v3/objects/deals/${input.dealId}`, {
+          params: { properties: required.join(",") },
+        });
+        const missing = required.filter((p) => !current.data.properties[p]);
+        if (missing.length > 0) {
+          return {
+            success: false,
+            blocked: true,
+            dealId: input.dealId,
+            missingProperties: missing,
+            message: `Cannot move deal ${input.dealId} to stage ${input.stageId}: missing required propert${missing.length === 1 ? "y" : "ies"} ${missing.join(", ")}. Set them with hubspot_update_deal, then retry.`,
+          };
+        }
+      }
+
+      const res = await client.patch<HubSpotRecord>(`/crm/v3/objects/deals/${input.dealId}`, {
+        properties: { dealstage: input.stageId },
+      });
+      return {
+        success: true,
+        dealId: input.dealId,
+        newStage: input.stageId,
+        deal: formatDeal(res.data),
+      };
     }
 
     default:
