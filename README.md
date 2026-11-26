@@ -1,6 +1,6 @@
 # hubspot-mcp-server
 
-A Model Context Protocol (MCP) server for the HubSpot CRM API — works both locally via Claude Desktop (stdio) and remotely via claude.ai (HTTP + bearer token).
+A Model Context Protocol (MCP) server for the HubSpot CRM and CMS APIs — works both locally via Claude Desktop (stdio) and remotely via claude.ai (HTTP + bearer token).
 
 ---
 
@@ -12,6 +12,16 @@ A Model Context Protocol (MCP) server for the HubSpot CRM API — works both loc
 | **Companies** | `hubspot_get_company`, `hubspot_list_companies`, `hubspot_create_company`, `hubspot_update_company`, `hubspot_delete_company` |
 | **Deals** | `hubspot_get_deal`, `hubspot_list_deals`, `hubspot_create_deal`, `hubspot_update_deal`, `hubspot_delete_deal` |
 | **Search & Assoc.** | `hubspot_search`, `hubspot_associate_records`, `hubspot_list_associations` |
+| **CMS: Website pages** | `hubspot_cms_list_pages`, `hubspot_cms_get_page`, `hubspot_cms_create_page`, `hubspot_cms_clone_page`, `hubspot_cms_update_page_draft`, `hubspot_cms_publish_page` |
+| **CMS: Design Manager** | `hubspot_cms_get_file`, `hubspot_cms_get_file_metadata`, `hubspot_cms_upload_file`, `hubspot_cms_upload_module` |
+
+### How the CMS tools work
+
+- **Pages** use the CMS Pages API (`/cms/v3/pages/site-pages`). Edits go to the page **draft** with `hubspot_cms_update_page_draft`; nothing is live until `hubspot_cms_publish_page`. HubSpot replaces each top-level field you send (for example `layoutSections`), so read the draft with `hubspot_cms_get_page` (`draft: true`) and send the full value back.
+- **Publishing** pushes the draft live for a page that is already published, and schedules an immediate publish for a page that has never been live.
+- **Design Manager files** (templates, partials, modules, CSS, JS) use the CMS Source Code API (`/cms/v3/source-code`). Uploads to the `published` environment (the default) are **live immediately** on every page that uses the file, so read a file with `hubspot_cms_get_file` before replacing it.
+- **`hubspot_cms_upload_module`** writes a whole custom module (`fields.json`, `meta.json`, `module.html`, and optional `module.css` / `module.js`) into a `.module` folder in your theme. It then appears in the page editor.
+- The `/agent` endpoint does not use the CMS tools yet; they are available through `/mcp`.
 
 ---
 
@@ -24,6 +34,7 @@ A Model Context Protocol (MCP) server for the HubSpot CRM API — works both loc
    - `crm.objects.contacts.read` + `write`
    - `crm.objects.companies.read` + `write`
    - `crm.objects.deals.read` + `write`
+   - `content` (website pages, templates, modules and theme files, used by the CMS tools)
 3. Copy the generated **Access Token**
 
 ### 2. Install & Build
@@ -84,7 +95,7 @@ Restart Claude Desktop — the tools will appear automatically.
    - **URL:** `https://hubspot-mcp-server.onrender.com/mcp`
    - **Header name:** `Authorization`
    - **Header value:** `Bearer <your MCP_API_KEY>`
-4. Click **Connect** — the 15 HubSpot tools will appear in your next conversation
+4. Click **Connect**. The 28 HubSpot tools will appear in your next conversation
 
 ---
 
@@ -96,6 +107,7 @@ Restart Claude Desktop — the tools will appear automatically.
 | `MCP_API_KEY` | ✅ (HTTP mode) | Bearer token that Claude.ai sends to authenticate |
 | `TRANSPORT` | No | `stdio` (default) or `http` |
 | `PORT` | No | HTTP port, default `3000` (Render sets this automatically) |
+| `HUBSPOT_BASE_URL` | No | API base URL, default `https://api.hubapi.com`. Only change it to test against a mock API |
 
 ---
 

@@ -23,6 +23,36 @@ export interface HubSpotSearchResponse<T> {
   };
 }
 
+// ── CMS shapes ───────────────────────────────────────────────────────────────
+
+export interface CmsPage {
+  id: string;
+  name?: string;
+  slug?: string;
+  url?: string;
+  htmlTitle?: string;
+  metaDescription?: string;
+  state?: string;
+  currentlyPublished?: boolean;
+  templatePath?: string;
+  updatedAt?: string;
+  layoutSections?: Record<string, unknown>;
+  widgets?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface CmsPageSummary {
+  id: string;
+  name: string | null;
+  slug: string | null;
+  url: string | null;
+  htmlTitle: string | null;
+  state: string | null;
+  currentlyPublished: boolean | null;
+  templatePath: string | null;
+  updatedAt: string | null;
+}
+
 export interface HubSpotError {
   status: string;
   message: string;

@@ -1,7 +1,7 @@
 {
   "name": "hubspot-mcp-server",
   "version": "1.0.0",
-  "description": "MCP server for HubSpot CRM — contacts, companies, deals, associations, and search",
+  "description": "MCP server for HubSpot CRM and CMS: contacts, companies, deals, associations, search, website pages, and theme files",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

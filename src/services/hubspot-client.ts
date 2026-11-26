@@ -29,9 +29,15 @@ export function createHubSpotClient(accessToken: string): AxiosInstance {
           "HubSpot rate limit exceeded. Wait a moment and try again."
         );
       }
+      if (status === 403) {
+        throw new Error(
+          `HubSpot denied access (403) to ${error.config?.url ?? "this endpoint"}. ` +
+          "Check that the private app token has the scope this tool needs (CMS tools need 'content')."
+        );
+      }
       if (status === 404) {
         throw new Error(
-          `HubSpot record not found. Verify the ID exists and your token has access.`
+          `HubSpot resource not found (${error.config?.url ?? "unknown path"}). Verify the ID or path exists and your token has access.`
         );
       }
 

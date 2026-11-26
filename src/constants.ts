@@ -1,4 +1,5 @@
-export const HUBSPOT_BASE_URL = "https://api.hubapi.com";
+// Override only for local testing against a mock API.
+export const HUBSPOT_BASE_URL = process.env.HUBSPOT_BASE_URL ?? "https://api.hubapi.com";
 export const CHARACTER_LIMIT = 50_000;
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
