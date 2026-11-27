@@ -25,7 +25,8 @@ const tool = (name: string, description: string, properties: Record<string, unkn
 });
 
 const TASK_HINT = "Properties: hs_task_subject, hs_task_body, hs_task_status (NOT_STARTED|IN_PROGRESS|WAITING|COMPLETED|DEFERRED), hs_task_priority (LOW|MEDIUM|HIGH), hs_task_type (TODO|CALL|EMAIL), hs_timestamp (ISO due date, required on create), hubspot_owner_id.";
-const APPT_HINT = "Properties: hs_appointment_name, hs_appointment_start (ISO), hs_appointment_end (ISO), hs_appointment_type, hubspot_owner_id.";
+const APPT_HINT = "Properties: hs_appointment_name, hs_appointment_start (ISO), hs_appointment_end (ISO), hs_appointment_type, hubspot_owner_id. NOTE: this is HubSpot's Commerce/Scheduling Appointments object (0-421), which is deactivated on many portals. If these calls fail, use the meeting tools instead — they cover the classic Meetings engagement available on virtually every portal.";
+const MEETING_HINT = "Properties: hs_meeting_title, hs_meeting_body, hs_meeting_start_time (ISO), hs_meeting_end_time (ISO), hs_meeting_outcome (SCHEDULED|COMPLETED|RESCHEDULED|NO_SHOW|CANCELED), hs_meeting_location, hs_meeting_location_type (PHONE|ADDRESS|CUSTOM|VCE), hubspot_owner_id.";
 
 export const CRM_EXTRA_TOOLS: Anthropic.Tool[] = [
   tool("hubspot_list_tasks", "List tasks.", page),
@@ -34,11 +35,17 @@ export const CRM_EXTRA_TOOLS: Anthropic.Tool[] = [
   tool("hubspot_update_task", `Update a task. ${TASK_HINT}`, { taskId: str("Task ID"), properties: props }, ["taskId", "properties"]),
   tool("hubspot_delete_task", "Archive a task.", { taskId: str("Task ID") }, ["taskId"]),
 
-  tool("hubspot_list_appointments", "List appointments.", page),
+  tool("hubspot_list_appointments", "List appointments (HubSpot Commerce/Scheduling object — deactivated on many portals; try meetings if this fails).", page),
   tool("hubspot_get_appointment", "Get an appointment by ID.", { appointmentId: str("Appointment ID") }, ["appointmentId"]),
   tool("hubspot_create_appointment", `Create an appointment, optionally associated with records. ${APPT_HINT}`, { properties: props, associations: assoc }, ["properties"]),
   tool("hubspot_update_appointment", `Update an appointment. ${APPT_HINT}`, { appointmentId: str("Appointment ID"), properties: props }, ["appointmentId", "properties"]),
   tool("hubspot_delete_appointment", "Archive an appointment.", { appointmentId: str("Appointment ID") }, ["appointmentId"]),
+
+  tool("hubspot_list_meetings", "List meetings (classic Meetings engagement — available on virtually every portal; prefer this over appointments unless Commerce/Scheduling is confirmed active).", page),
+  tool("hubspot_get_meeting", "Get a meeting by ID.", { meetingId: str("Meeting ID") }, ["meetingId"]),
+  tool("hubspot_create_meeting", `Create a meeting, optionally associated with records. ${MEETING_HINT}`, { properties: props, associations: assoc }, ["properties"]),
+  tool("hubspot_update_meeting", `Update a meeting. ${MEETING_HINT}`, { meetingId: str("Meeting ID"), properties: props }, ["meetingId", "properties"]),
+  tool("hubspot_delete_meeting", "Archive a meeting.", { meetingId: str("Meeting ID") }, ["meetingId"]),
 
   tool("hubspot_search_segments", "Search segments (lists) by name; empty query returns all.", {
     query: str("Name query"), count: { type: "number" }, offset: { type: "number" },
@@ -78,6 +85,12 @@ export async function executeCrmExtraTool(c: AxiosInstance, name: string, i: Too
     case "hubspot_create_appointment": return x.createActivity(c, "appointments", i.properties, i.associations);
     case "hubspot_update_appointment": return x.updateActivity(c, "appointments", i.appointmentId, i.properties);
     case "hubspot_delete_appointment": return x.deleteActivity(c, "appointments", i.appointmentId);
+
+    case "hubspot_list_meetings": return x.listActivities(c, "meetings", i.limit, i.after);
+    case "hubspot_get_meeting": return x.getActivity(c, "meetings", i.meetingId);
+    case "hubspot_create_meeting": return x.createActivity(c, "meetings", i.properties, i.associations);
+    case "hubspot_update_meeting": return x.updateActivity(c, "meetings", i.meetingId, i.properties);
+    case "hubspot_delete_meeting": return x.deleteActivity(c, "meetings", i.meetingId);
 
     case "hubspot_search_segments": return x.searchLists(c, i.query, i.count, i.offset);
     case "hubspot_get_segment": return x.getList(c, i.listId);

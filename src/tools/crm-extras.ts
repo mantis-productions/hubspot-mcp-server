@@ -33,7 +33,11 @@ export function registerCrmExtraTools(server: McpServer, client: AxiosInstance):
     },
     {
       type: "appointments" as const, singular: "appointment", idKey: "appointmentId",
-      props: "hs_appointment_name, hs_appointment_start (ISO), hs_appointment_end (ISO), hs_appointment_type, hubspot_owner_id",
+      props: "hs_appointment_name, hs_appointment_start (ISO), hs_appointment_end (ISO), hs_appointment_type, hubspot_owner_id. NOTE: HubSpot's Commerce/Scheduling Appointments object (0-421) is deactivated on many portals — if calls to this fail, use the meetings tools instead, which cover the classic Meetings engagement available on virtually every portal.",
+    },
+    {
+      type: "meetings" as const, singular: "meeting", idKey: "meetingId",
+      props: "hs_meeting_title, hs_meeting_body, hs_meeting_start_time (ISO), hs_meeting_end_time (ISO), hs_meeting_outcome (SCHEDULED|COMPLETED|RESCHEDULED|NO_SHOW|CANCELED), hs_meeting_location, hs_meeting_location_type (PHONE|ADDRESS|CUSTOM|VCE), hubspot_owner_id",
     },
   ];
 
@@ -76,7 +80,7 @@ export function registerCrmExtraTools(server: McpServer, client: AxiosInstance):
     }, async (args) => respond(await x.deleteActivity(client, a.type, args[a.idKey])));
   }
 
-  // ── Segments (lists) ───────────────────────────────────────────────────────
+  // ── Segments (lists) ────────────────────────────────────────────────────────
 
   const listId = { listId: z.string().describe("HubSpot list (segment) ID") };
 
