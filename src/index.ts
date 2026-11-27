@@ -11,6 +11,8 @@ import { registerContactTools } from "./tools/contacts.js";
 import { registerCompanyTools } from "./tools/companies.js";
 import { registerDealTools } from "./tools/deals.js";
 import { registerSearchTools } from "./tools/search.js";
+import { registerCmsTools } from "./tools/cms.js";
+import { registerCrmExtraTools } from "./tools/crm-extras.js";
 import { runAgent } from "./agents/hubspot-agent.js";
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
@@ -21,7 +23,7 @@ function getHubSpotToken(): string {
     throw new Error(
       "HUBSPOT_ACCESS_TOKEN environment variable is required.\n" +
       "Create a Private App in HubSpot: Settings → Integrations → Private Apps\n" +
-      "Required scopes: crm.objects.contacts.read/write, crm.objects.companies.read/write, crm.objects.deals.read/write"
+      "Required scopes: crm.objects.contacts.read/write, crm.objects.companies.read/write, crm.objects.deals.read/write, content (CMS blog posts, pages), crm.objects.appointments.read/write, crm.lists.read/write, tasks scope"
     );
   }
   return token;
@@ -48,6 +50,8 @@ function buildServer(): McpServer {
   registerCompanyTools(server, client);
   registerDealTools(server, client);
   registerSearchTools(server, client);
+  registerCmsTools(server, client);
+  registerCrmExtraTools(server, client);
 
   return server;
 }
