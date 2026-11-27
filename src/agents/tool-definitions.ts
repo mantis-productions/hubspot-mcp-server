@@ -1,6 +1,11 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { CMS_TOOLS } from "./cms-tools.js";
+import { CRM_EXTRA_TOOLS } from "./crm-extras-tools.js";
 
 export const HUBSPOT_TOOLS: Anthropic.Tool[] = [
+  ...CMS_TOOLS,
+  ...CRM_EXTRA_TOOLS,
+
   // ── Contacts ──────────────────────────────────────────────────────────────
 
   {

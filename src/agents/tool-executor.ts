@@ -1,5 +1,7 @@
 import type { AxiosInstance } from "axios";
 import { ASSOCIATION_TYPES, DEFAULT_CONTACT_PROPERTIES, DEFAULT_COMPANY_PROPERTIES, DEFAULT_DEAL_PROPERTIES } from "../constants.js";
+import { executeCmsTool, isCmsTool } from "./cms-tools.js";
+import { executeCrmExtraTool, isCrmExtraTool } from "./crm-extras-tools.js";
 import { prop } from "../services/hubspot-client.js";
 import {
   setStageRequirements,
@@ -99,6 +101,9 @@ export async function executeTool(
   toolName: string,
   input: ToolInput
 ): Promise<unknown> {
+  if (isCmsTool(toolName)) return executeCmsTool(client, toolName, input);
+  if (isCrmExtraTool(toolName)) return executeCrmExtraTool(client, toolName, input);
+
   switch (toolName) {
     // ── Contacts ─────────────────────────────────────────────────────────────
 
